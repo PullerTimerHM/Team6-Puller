@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TEAM 6 - Pullers</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 30px;
+      background: #f9f9f9;
+      color: #333;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 30px;
+    }
+
+    .flex-container {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .puller-box {
+      flex: 1;
+      min-width: 300px;
+      max-width: 500px;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .timer {
+      font-size: 50px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      font-size: 22px;
+      padding: 12px 36px;
+      margin: 10px;
+      cursor: pointer;
+      border: none;
+      color: white;
+      border-radius: 6px;
+    }
+
+    .puller1-btn { background-color: #007bff; }
+    .puller2-btn { background-color: #ff5722; }
+    .download-btn {
+      font-size: 16px;
+      padding: 8px 18px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .log-container {
+      background: #f3f3f3;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 16px;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      text-align: left;
+    }
+
+    canvas {
+      max-width: 900px;
+      margin: 30px auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<h1>TEAM 6 Pullers, Do not forget to click me!</h1>
+
+<div class="flex-container">
+  <!-- Puller 1 -->
+  <div class="puller-box">
+    <div class="timer" id="timer-puller1">00:30</div>
+    <button class="puller1-btn" onclick="recordClick('puller1')">Puller 1</button>
+    <div class="log-container"><pre id="log-puller1"></pre></div>
+    <button class="download-btn" onclick="downloadLog('puller1')">Download Puller 1 Log</button>
+  </div>
+
+  <!-- Puller 2 -->
+  <div class="puller-box">
+    <div class="timer" id="timer-puller2">00:30</div>
+    <button class="puller2-btn" onclick="recordClick('puller2')">Puller 2</button>
+    <div class="log-container"><pre id="log-puller2"></pre></div>
+    <button class="download-btn" onclick="downloadLog('puller2')">Download Puller 2 Log</button>
+  </div>
+</div>
+
+<h2>Live Pace Status</h2>
+<div style="margin-bottom: 10px; font-size: 18px;">
+  <span style="color: green; font-weight: bold;">&#9632;</span> On Time
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <span style="color: red; font-weight: bold;">&#9632;</span> Missed
+</div>
+<canvas id="statusChart" height="120"></canvas>
+
+<script>
+  const initialDuration = 30;
+
+  const timers = {
+    puller1: {
+      remainingTime: initialDuration,
+      intervalId: null,
+      display: document.getElementById('timer-puller1'),
+      logElement: document.getElementById('log-puller1'),
+      logText: ''
+    },
+    puller2: {
+      remainingTime: initialDuration,
+      intervalId: null,
+      display: document.getElementById('timer-puller2'),
+      logElement: document.getElementById('log-puller2'),
+      logText: ''
+    }
+  };
+
+  let lastClick = { puller1: null, puller2: null };
+
+  const statusCtx = document.getElementById('statusChart').getContext('2d');
+  const statusChart = new Chart(statusCtx, {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'Puller 1', data: [], backgroundColor: [] },
+        { label: 'Puller 2', data: [], backgroundColor: [] }
+      ]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 1,
+          ticks: { display: false },
+          grid: { display: false }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+
+  function formatTime(seconds) {
+    const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const secs = String(seconds % 60).padStart(2, '0');
+    return `${mins}:${secs}`;
+  }
+
+  function updateTimer(puller) {
+    const timer = timers[puller];
+    timer.display.textContent = formatTime(timer.remainingTime);
+    if (timer.remainingTime > 0) {
+      timer.remainingTime--;
+    } else {
+      clearInterval(timer.intervalId);
+      timer.intervalId = null;
+    }
+  }
+
+  function startCountdown(puller) {
+    const timer = timers[puller];
+    clearInterval(timer.intervalId);
+    timer.remainingTime = initialDuration;
+    updateTimer(puller);
+    timer.intervalId = setInterval(() => updateTimer(puller), 1000);
+  }
+
+  function recordClick(puller) {
+    const now = new Date();
+    lastClick[puller] = now;
+
+    const timer = timers[puller];
+    const timeLeft = formatTime(timer.remainingTime);
+    const date = now.toLocaleDateString();
+    const time = now.toLocaleTimeString();
+    const entry = `Date: ${date} — Time: ${time} — Time left: ${timeLeft}\n`;
+
+    timer.logText += entry;
+    timer.logElement.textContent = timer.logText;
+
+    startCountdown(puller);
+  }
+
+  function downloadLog(puller) {
+    const text = timers[puller].logText || 'No log available.';
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${puller}_log.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function evaluatePace() {
+    const now = new Date();
+    const label = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    const p1OnTime = lastClick.puller1 && (now - lastClick.puller1 < initialDuration * 1000);
+    const p2OnTime = lastClick.puller2 && (now - lastClick.puller2 < initialDuration * 1000);
+
+    statusChart.data.labels.push(label);
+    statusChart.data.datasets[0].data.push(1);
+    statusChart.data.datasets[1].data.push(1);
+    statusChart.data.datasets[0].backgroundColor.push(p1OnTime ? 'green' : 'red');
+    statusChart.data.datasets[1].backgroundColor.push(p2OnTime ? 'green' : 'red');
+    statusChart.update();
+
+    lastClick.puller1 = null;
+    lastClick.puller2 = null;
+  }
+
+  startCountdown('puller1');
+  startCountdown('puller2');
+  setInterval(evaluatePace, initialDuration * 1000);
+</script>
+
+</body>
+</html>
